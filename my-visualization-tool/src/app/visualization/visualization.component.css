@@ -1,0 +1,133 @@
+/* General Container Styling */
+div {
+  font-family: 'Roboto', sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #2f2f2f;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  color: #e0e0e0;
+}
+
+/* Header Styling */
+h2, h3 {
+  color: #d8cfcf; /* Rusty brown */
+  text-align: center;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+
+
+/* Custom File Input Button */
+input[type="file"] {
+  display: none; /* Hide the default input */
+}
+
+.custom-file-input {
+  display: inline-block;
+  margin: 10px auto; /* Centers the element horizontally */
+  padding: 10px 20px;
+  font-size: 14px;
+  color: #fff;
+  background-color: #404040; /* Dark gray */
+  border: 1px solid #e07a5f; /* Rusty brown */
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: center;
+  transition: background-color 0.3s ease;
+}
+
+.custom-file-input:hover {
+  background-color: #8e4a3c; /* Darker rusty brown */
+}
+
+.custom-file-input:active {
+  background-color: #e07a5f; /* Rusty brown */
+}
+
+.flex-container {
+  display: flex;
+  justify-content: center; /* Centers horizontally */
+  align-items: center; /* Centers vertically if needed */
+}
+
+
+button {
+  display: block;
+  margin: 10px auto;
+  padding: 10px 20px;
+  font-size: 14px;
+  color: #fff;
+  background-color: #e07a5f; /* Rusty brown */
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #8e4a3c; /* Darker rusty brown */
+}
+
+button:disabled {
+  background-color: #555555; /* Disabled gray */
+  cursor: not-allowed;
+}
+
+/* Dropdown Styling */
+select {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin: 10px auto 20px auto;
+  font-size: 14px;
+  background-color: #404040;
+  color: #e0e0e0;
+  border: 1px solid #e07a5f;
+  border-radius: 4px;
+}
+
+#map-container {
+  width: 100%; /* Ensures the container spans the full width of its parent */
+  margin: 0 auto; /* Centers the container if its parent has a defined width */
+  padding: 0; /* Removes extra padding */
+  box-sizing: border-box; /* Ensures padding and borders are included in width */
+  overflow: hidden; /* Prevents content overflow */
+}
+
+#map {
+  width: 100%; /* Make the map span the full width of its container */
+  height: 400px; /* Set a fixed height for the map */
+  margin: 0; /* Remove extra margins */
+  padding: 0; /* Remove padding */
+  border-radius: 8px; /* Optional: Rounded corners for better styling */
+  box-sizing: border-box; /* Include borders and padding in width */
+}
+
+#graph-container {
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #8e4a3c; /* Rusty brown */
+  background-color: #1f1f1f; /* Dark gray */
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+#visualization-container {
+  height: 400px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #1f1f1f; /* Dark gray */
+  border: 1px solid #8e4a3c; /* Rusty brown */
+  border-radius: 8px;
+  font-size: 16px;
+  color: #999999; /* Subtle gray text */
+  box-sizing: border-box;
+}
+
+

@@ -1,8 +1,26 @@
 <div>
   <h2>Upload FIT File</h2>
-  <input type="file" (change)="onFileSelected($event)" />
-  <button (click)="uploadFile()" [disabled]="!selectedFile">Upload</button>
+  <div class="flex-container">
+    <label for="file-upload" class="custom-file-input">Choose File</label>
+    <input id="file-upload" type="file" (change)="onFileSelected($event)" style="display: none;" />
+  </div>
 
-  <h3>Graph</h3>
-  <div id="visualization-container" style="width: 100%; height: 400px;"></div>
+  <h3>Select Visualization</h3>
+  <select [(ngModel)]="currentVisualization" (change)="onVisualizationChange()">
+    <option value="cadence-distance">Cadence vs Distance</option>
+    <option value="optimal-cadence-bands">Optimal Cadence Bands</option>
+    <option value="stride-length-pace">Stride Length vs Pace</option>
+    <option value="heatmap-correlation">Heatmap: Correlation</option>
+    <option value="scatter-cadence-stride">Scatter: Cadence vs Stride Length</option>
+  </select>
+
+  <div id="map-container">
+    <h3>Map</h3>
+    <div id="map"></div>
+  </div>
+
+  <div id="graph-container">
+    <h3>Graph</h3>
+    <div id="visualization-container"></div>
+  </div>
 </div>
