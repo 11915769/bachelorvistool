@@ -1,0 +1,8 @@
+<div>
+  <h2>Upload FIT File</h2>
+  <input type="file" (change)="onFileSelected($event)" />
+  <button (click)="uploadFile()" [disabled]="!selectedFile">Upload</button>
+
+  <h3>Graph</h3>
+  <div id="visualization-container" style="width: 100%; height: 400px;"></div>
+</div>
