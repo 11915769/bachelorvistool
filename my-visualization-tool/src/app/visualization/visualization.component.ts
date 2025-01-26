@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import * as L from 'leaflet';
 import * as vgplot from '@uwdata/vgplot';
+import {cadenceVsStrideLength} from "./renderFunctions/cadenceVsStrideLength";
 
 @Component({
   selector: 'app-visualization',
@@ -59,7 +60,7 @@ export class VisualizationComponent {
 
     switch (this.currentVisualization) {
       case 'cadence-distance':
-        this.renderCadenceDistance(container);
+        cadenceVsStrideLength(container, this.data);
         break;
       case 'stride-length-pace':
         this.renderStrideLengthPace(container);
@@ -75,20 +76,7 @@ export class VisualizationComponent {
     }
   }
 
-  // Cadence vs Distance Visualization
-  renderCadenceDistance(container: HTMLElement): void {
-    const plot = vgplot.plot(
-      vgplot.line(
-        this.data.Distance.map((x: number, i: number) => ({ x, y: this.data.Cadence[i] })),
-        { x: 'x', y: 'y', stroke: 'blue' }
-      ),
-      vgplot.width(600),
-      vgplot.height(300)
-    );
-    container.appendChild(plot);
-  }
 
-  // Stride Length vs Pace Visualization
   renderStrideLengthPace(container: HTMLElement): void {
     const plot = vgplot.plot(
       vgplot.line(
