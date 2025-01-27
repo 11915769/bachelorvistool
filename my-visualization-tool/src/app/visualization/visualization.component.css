@@ -1,39 +1,37 @@
 /* General Container Styling */
 div {
   font-family: 'Roboto', sans-serif;
-  max-width: 800px;
+  max-width: 1200px; /* Fixed max-width for better alignment */
   margin: 0 auto;
   padding: 20px;
-  background-color: #2f2f2f;
+  background-color: #F3F4F6; /* Light gray */
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-  color: #e0e0e0;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  color: #333333; /* Dark text for readability */
 }
 
 /* Header Styling */
 h2, h3 {
-  color: #d8cfcf; /* Rusty brown */
+  color: #007BFF; /* Vibrant blue */
   text-align: center;
   margin-bottom: 10px;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
-
-
 /* Custom File Input Button */
 input[type="file"] {
-  display: none; /* Hide the default input */
+  display: none;
 }
 
 .custom-file-input {
   display: inline-block;
-  margin: 10px auto; /* Centers the element horizontally */
+  margin: 10px auto;
   padding: 10px 20px;
   font-size: 14px;
-  color: #fff;
-  background-color: #404040; /* Dark gray */
-  border: 1px solid #e07a5f; /* Rusty brown */
+  color: #FFFFFF;
+  background-color: #4CAF50; /* Vibrant green */
+  border: none;
   border-radius: 4px;
   cursor: pointer;
   text-align: center;
@@ -41,27 +39,23 @@ input[type="file"] {
 }
 
 .custom-file-input:hover {
-  background-color: #8e4a3c; /* Darker rusty brown */
-}
-
-.custom-file-input:active {
-  background-color: #e07a5f; /* Rusty brown */
+  background-color: #43A047; /* Darker green */
 }
 
 .flex-container {
   display: flex;
-  justify-content: center; /* Centers horizontally */
-  align-items: center; /* Centers vertically if needed */
+  justify-content: center;
+  align-items: center;
 }
 
-
+/* Button Styling */
 button {
   display: block;
   margin: 10px auto;
   padding: 10px 20px;
   font-size: 14px;
-  color: #fff;
-  background-color: #e07a5f; /* Rusty brown */
+  color: #FFFFFF;
+  background-color: #007BFF; /* Vibrant blue */
   border: none;
   border-radius: 4px;
   cursor: pointer;
@@ -69,65 +63,69 @@ button {
 }
 
 button:hover {
-  background-color: #8e4a3c; /* Darker rusty brown */
+  background-color: #0056B3; /* Darker blue */
 }
 
 button:disabled {
-  background-color: #555555; /* Disabled gray */
+  background-color: #B0BEC5; /* Muted gray */
   cursor: not-allowed;
 }
 
 /* Dropdown Styling */
 select {
   display: block;
-  width: 100%;
+  width: 70%; /* Wider dropdown */
   padding: 10px;
-  margin: 10px auto 20px auto;
+  margin: 10px auto;
   font-size: 14px;
-  background-color: #404040;
-  color: #e0e0e0;
-  border: 1px solid #e07a5f;
+  text-align: center;
+  background-color: #FFFFFF;
+  color: #333333; /* Dark text */
+  border: 2px solid #007BFF;
   border-radius: 4px;
 }
 
+/* Map Container Styling */
 #map-container {
-  width: 100%; /* Ensures the container spans the full width of its parent */
-  margin: 0 auto; /* Centers the container if its parent has a defined width */
-  padding: 0; /* Removes extra padding */
-  box-sizing: border-box; /* Ensures padding and borders are included in width */
-  overflow: hidden; /* Prevents content overflow */
+  width: 100%;
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 #map {
-  width: 100%; /* Make the map span the full width of its container */
-  height: 400px; /* Set a fixed height for the map */
-  margin: 0; /* Remove extra margins */
-  padding: 0; /* Remove padding */
-  border-radius: 8px; /* Optional: Rounded corners for better styling */
-  box-sizing: border-box; /* Include borders and padding in width */
+  width: 100%;
+  height: 600px;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Graph Container Styling */
 #graph-container {
   margin-top: 20px;
   padding: 10px;
-  border: 1px solid #8e4a3c; /* Rusty brown */
-  background-color: #1f1f1f; /* Dark gray */
+  border: 1px solid #B0BEC5; /* Muted gray */
+  background-color: #FFFFFF;
   border-radius: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Visualization Container Styling */
 #visualization-container {
-  height: 400px;
+  max-width: 95%; /* Adjust max-width */
   width: 100%;
+  margin: 20px auto;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: #1f1f1f; /* Dark gray */
-  border: 1px solid #8e4a3c; /* Rusty brown */
+  background-color: #FFFFFF;
+  border: 1px solid #B0BEC5; /* Muted gray */
   border-radius: 8px;
   font-size: 16px;
-  color: #999999; /* Subtle gray text */
-  box-sizing: border-box;
+  color: #333333;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
-
-

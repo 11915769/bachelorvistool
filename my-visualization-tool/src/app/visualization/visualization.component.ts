@@ -1,10 +1,10 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import {Component} from '@angular/core';
+import {CommonModule} from '@angular/common';
+import {FormsModule} from '@angular/forms';
+import {HttpClient} from '@angular/common/http';
 import * as L from 'leaflet';
-import * as vgplot from '@uwdata/vgplot';
 import {cadenceVsStrideLength} from "./renderFunctions/cadenceVsStrideLength";
+import {paceVsStrideLengthWithCadence} from "./renderFunctions/paceVsStirdeLengthWithCadence";
 
 @Component({
   selector: 'app-visualization',
@@ -15,19 +15,19 @@ import {cadenceVsStrideLength} from "./renderFunctions/cadenceVsStrideLength";
 })
 export class VisualizationComponent {
   selectedFile: File | null = null;
-  currentVisualization: string = 'cadence-distance'; // Default visualization
-  visualizations = ['cadence-distance', 'stride-length-pace', 'correlation-heatmap', 'scatter-cadence-stride'];
+  currentVisualization: string = 'cadence-distance';
   data: any = null;
-  map: any  = null;
+  map: any = null;
   polylines: any = null;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+  }
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input?.files?.length) {
       this.selectedFile = input.files[0];
-      this.uploadFile(); // Automatically upload the file after selection
+      this.uploadFile();
     }
   }
 
@@ -41,7 +41,7 @@ export class VisualizationComponent {
       (response: any) => {
         this.data = response.data;
         this.renderVisualization();
-        this.renderMap(); // Always render the map
+        this.renderMap();
       },
       (error) => console.error('Error uploading file:', error)
     );
@@ -56,20 +56,14 @@ export class VisualizationComponent {
 
     const container = document.getElementById('visualization-container');
     if (!container) return;
-    container.innerHTML = ''; // Clear previous visualization
+    container.innerHTML = '';
 
     switch (this.currentVisualization) {
       case 'cadence-distance':
         cadenceVsStrideLength(container, this.data);
         break;
-      case 'stride-length-pace':
-        this.renderStrideLengthPace(container);
-        break;
-      case 'correlation-heatmap':
-        this.renderHeatmapCorrelation(container);
-        break;
-      case 'scatter-cadence-stride':
-        this.renderScatterCadenceStride(container);
+      case 'strideLength-power':
+        paceVsStrideLengthWithCadence(container, this.data);
         break;
       default:
         console.error('Unknown visualization type');
@@ -77,91 +71,73 @@ export class VisualizationComponent {
   }
 
 
-  renderStrideLengthPace(container: HTMLElement): void {
-    const plot = vgplot.plot(
-      vgplot.line(
-        this.data.Pace.map((x: number, i: number) => ({ x, y: this.data.StrideLength[i] })),
-        { x: 'x', y: 'y', stroke: 'green' }
-      ),
-      vgplot.width(600),
-      vgplot.height(300)
-    );
-    container.appendChild(plot);
-  }
-
-  // Heatmap Correlation Visualization
-  renderHeatmapCorrelation(container: HTMLElement): void {
-    const metrics = ['Cadence', 'StrideLength', 'Pace', 'Power', 'HeartRate'];
-    const correlations = metrics.flatMap((x) =>
-      metrics.map((y) => ({
-        x: x,
-        y: y,
-        value: this.calculateCorrelation(this.data[x], this.data[y]),
-      }))
-    );
-    const plot = vgplot.plot(
-      vgplot.cell(correlations, { x: 'x', y: 'y', fill: 'value', stroke: 'white' }),
-      vgplot.width(600),
-      vgplot.height(600)
-    );
-    container.appendChild(plot);
-  }
-
-  // Scatter: Cadence vs Stride Length
-  renderScatterCadenceStride(container: HTMLElement): void {
-    const scatterData = this.data.Cadence.map((cadence: number, i: number) => ({
-      x: this.data.Pace[i],
-      y: this.data.StrideLength[i],
-      color: cadence,
-    }));
-    const plot = vgplot.plot(
-      vgplot.dot(scatterData, { x: 'x', y: 'y', fill: 'color', stroke: 'black', r: 3 }),
-      vgplot.width(600),
-      vgplot.height(300)
-    );
-    container.appendChild(plot);
-  }
-
   renderMap(): void {
-  if (!this.data || !this.data.Latitude?.length || !this.data.Longitude?.length) {
-    console.log(this.data);
-    console.error("Missing positional data.");
-    return;
+    if (!this.data || !this.data.Latitude?.length || !this.data.Longitude?.length) {
+      console.error("Missing positional data.");
+      return;
+    }
+
+    // Define the type for positions
+    type Position = { lat: number; lng: number; index: number };
+
+    const positions: Position[] = this.data.Latitude.map((lat: number, index: number) => ({
+      lat: lat,
+      lng: this.data.Longitude[index],
+      index: index,
+    }));
+
+    if (positions.length < 2) {
+      console.error("Not enough positional data to draw a route.");
+      return;
+    }
+
+    if (!this.map) {
+      this.map = L.map("map").setView([positions[0].lat, positions[0].lng], 13);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+      }).addTo(this.map);
+    }
+
+    // Remove existing polylines and markers if they exist
+    if (this.polylines) {
+      this.map.removeLayer(this.polylines);
+    }
+
+    // Add polyline for the route
+    this.polylines = L.polyline(positions.map(p => [p.lat, p.lng]), {color: "red"}).addTo(this.map);
+
+    // Add markers with hover events
+    positions.forEach((position: Position) => {
+      const marker = L.circleMarker([position.lat, position.lng], {
+        radius: 2,
+        color: "#007BFF",
+        fillColor: "#007BFF",
+        fillOpacity: 0.8,
+      }).addTo(this.map);
+
+      marker.on("mouseover", () => {
+        this.highlightPointInVisualization(position.index);
+      });
+
+      marker.on("mouseout", () => {
+        this.highlightPointInVisualization(null);
+      });
+    });
+
+    const bounds = L.latLngBounds(positions.map(p => [p.lat, p.lng]));
+    this.map.fitBounds(bounds);
   }
 
-  const positions = this.data.Latitude.map((lat: number, index: number) => ({
-    lat: lat,
-    lng: this.data.Longitude[index],
-  }));
+  highlightPointInVisualization(index: number | null): void {
+  const container = document.getElementById("visualization-container");
+  if (!container) return;
 
-  if (positions.length < 2) {
-    console.error("Not enough positional data to draw a route.");
-    return;
-  }
+  const visualization = this.currentVisualization === "cadence-distance"
+    ? cadenceVsStrideLength
+    : paceVsStrideLengthWithCadence;
 
-  if (!this.map) {
-  this.map = L.map("map").setView([positions[0].lat, positions[0].lng], 13);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(this.map);
+  visualization(container, this.data, index);
 }
 
-  this.polylines = L.polyline(positions, { color: "red" }).addTo(this.map);
-
-  const bounds = L.latLngBounds(positions);
-  this.map.fitBounds(bounds);
-}
-
-  // Utility: Correlation Calculation
-  calculateCorrelation(x: number[], y: number[]): number {
-    const meanX = x.reduce((sum, val) => sum + val, 0) / x.length;
-    const meanY = y.reduce((sum, val) => sum + val, 0) / y.length;
-    const numerator = x.reduce((sum, xi, i) => sum + (xi - meanX) * (y[i] - meanY), 0);
-    const denominator = Math.sqrt(
-      x.reduce((sum, xi) => sum + Math.pow(xi - meanX, 2), 0) *
-      y.reduce((sum, yi) => sum + Math.pow(yi - meanY, 2), 0)
-    );
-    return numerator / denominator;
-  }
 }
