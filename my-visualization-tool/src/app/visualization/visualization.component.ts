@@ -5,6 +5,7 @@ import {HttpClient} from '@angular/common/http';
 import * as L from 'leaflet';
 import {cadenceVsStrideLength} from "./renderFunctions/cadenceVsStrideLength";
 import {paceVsStrideLengthWithCadence} from "./renderFunctions/paceVsStirdeLengthWithCadence";
+import {cadenceStrideLengthBoxPlot} from "./renderFunctions/cadenceStrideLengthBoxPlot";
 
 @Component({
   selector: 'app-visualization',
@@ -19,8 +20,13 @@ export class VisualizationComponent {
   data: any = null;
   map: any = null;
   polylines: any = null;
+  uploadMode: 'single' | 'multi' = 'single';
 
   constructor(private http: HttpClient) {
+  }
+
+  setUploadMode(mode: 'single' | 'multi'): void {
+    this.uploadMode = mode;
   }
 
   onFileSelected(event: Event): void {
@@ -28,6 +34,13 @@ export class VisualizationComponent {
     if (input?.files?.length) {
       this.selectedFile = input.files[0];
       this.uploadFile();
+    }
+  }
+
+  onFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      console.log('Multiple files selected:', Array.from(input.files));
     }
   }
 
@@ -48,7 +61,7 @@ export class VisualizationComponent {
   }
 
   onVisualizationChange(): void {
-    this.renderVisualization(); // Re-render when visualization type changes
+    this.renderVisualization();
   }
 
   renderVisualization(): void {
@@ -64,6 +77,9 @@ export class VisualizationComponent {
         break;
       case 'strideLength-power':
         paceVsStrideLengthWithCadence(container, this.data);
+        break;
+      case 'boxplot':
+        cadenceStrideLengthBoxPlot(container, this.data);
         break;
       default:
         console.error('Unknown visualization type');

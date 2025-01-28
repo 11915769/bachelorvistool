@@ -7,7 +7,6 @@ interface ScatterData {
   Power: number[];
 }
 
-// Initialize the DuckDB-WASM connector
 vg.coordinator().databaseConnector(vg.wasmConnector());
 
 export function paceVsStrideLengthWithCadence(container: HTMLElement, data: ScatterData): void {
@@ -18,12 +17,10 @@ export function paceVsStrideLengthWithCadence(container: HTMLElement, data: Scat
       cadence: data.Cadence[index],
     }));
 
-    // Sort by each metric
     const sortedByPace = [...indexedData].sort((a, b) => a.pace - b.pace);
     const sortedByStrideLength = [...indexedData].sort((a, b) => a.strideLength - b.strideLength);
     const sortedByCadence = [...indexedData].sort((a, b) => a.cadence - b.cadence);
 
-    // Collect the indices of extreme values
     const excludeIndices = new Set([
       ...sortedByPace.slice(0, topN).map(item => item.pace),
       ...sortedByPace.slice(-topN).map(item => item.pace),
@@ -33,13 +30,11 @@ export function paceVsStrideLengthWithCadence(container: HTMLElement, data: Scat
       ...sortedByCadence.slice(-topN).map(item => item.cadence),
     ]);
 
-    // Filter out extreme values
     return indexedData.filter(item => !excludeIndices.has(item.pace) && !excludeIndices.has(item.strideLength) && !excludeIndices.has(item.cadence));
   };
 
   const filteredScatterD = filterOutExtremes(data);
 
-  // Prepare the in-memory table
   const values = filteredScatterD
     .map(row => `(${row.pace}, ${row.strideLength}, ${row.cadence})`)
     .join(",");
@@ -68,7 +63,7 @@ export function paceVsStrideLengthWithCadence(container: HTMLElement, data: Scat
       vg.xLabel("Pace"),
       vg.yLabel("Stride Length"),
       vg.width(600),
-      vg.height(300)
+      vg.height(300),
     ),
     vg.plot(
       vg.heatmap(vg.from("filteredData",  {filterBy: $brush}), {

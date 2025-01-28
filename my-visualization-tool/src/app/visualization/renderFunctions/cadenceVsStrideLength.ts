@@ -19,7 +19,7 @@ export function cadenceVsStrideLength(container: HTMLElement, data: ChartData, h
 
 
   function renderChart() {
-    const timeData = data.Timestamp.map((_, index) => index / 60); // Convert indices to minutes
+    const timeData = data.Timestamp.map((_, index) => index / 60);
 
     const strideLengthLineData = data.Distance.map((_, index) => ({
       distance: data.Distance[index],
@@ -55,27 +55,27 @@ export function cadenceVsStrideLength(container: HTMLElement, data: ChartData, h
         Plot.dot(cadenceLineData, Plot.pointerX({x: currentX, y: "cadence", stroke: "red"})),
         Plot.dot(powerLineData, Plot.pointerX({x: currentX, y: "power", stroke: "red"})),
         Plot.ruleX(
-          strideLengthLineData.filter(d => d.highlight), // Only highlight the hovered point
+          strideLengthLineData.filter(d => d.highlight),
           {x: "distance", y: "strideLength", fill: "red", stroke: "red"}
         ),
         Plot.ruleX(
-          cadenceLineData.filter(d => d.highlight), // Only highlight the hovered point
+          cadenceLineData.filter(d => d.highlight),
           {x: "distance", y: "cadence", fill: "red", stroke: "red"}
         ),
         Plot.ruleX(
-          powerLineData.filter(d => d.highlight), // Only highlight the hovered point
+          powerLineData.filter(d => d.highlight),
           {x: "distance", y: "power", fill: "red", stroke: "red"}
         ),
         Plot.dot(
-          strideLengthLineData.filter(d => d.highlight), // Only highlight the hovered point
+          strideLengthLineData.filter(d => d.highlight),
           {x: "distance", y: "strideLength", fill: "red", stroke: "red"}
         ),
         Plot.dot(
-          cadenceLineData.filter(d => d.highlight), // Only highlight the hovered point
+          cadenceLineData.filter(d => d.highlight),
           {x: "distance", y: "cadence", fill: "red", stroke: "red"}
         ),
         Plot.dot(
-          powerLineData.filter(d => d.highlight), // Only highlight the hovered point
+          powerLineData.filter(d => d.highlight),
           {x: "distance", y: "power", fill: "red", stroke: "red"}
         ),
         Plot.text(strideLengthLineData, Plot.pointerX({

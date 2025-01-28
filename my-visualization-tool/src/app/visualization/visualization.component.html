@@ -1,26 +1,58 @@
-<div>
-  <h2>Upload FIT File</h2>
-  <div class="flex-container">
-    <label for="file-upload" class="custom-file-input">Choose File</label>
-    <input id="file-upload" type="file" (change)="onFileSelected($event)" style="display: none;"/>
+<div class="toggle-buttons">
+  <div
+    class="button single-upload"
+    [class.active]="uploadMode === 'single'"
+    (click)="setUploadMode('single')"
+  >
+    Single Upload
   </div>
-
-  <div>
-    <h3>Select Visualization</h3>
-    <select [(ngModel)]="currentVisualization" (change)="onVisualizationChange()">
-      <option value="cadence-distance">Basic Visualization</option>
-      <option value="strideLength-power">Stride Lenght vs Pace</option>
-    </select>
-
-    <div id="map-container">
-      <h3>Map</h3>
-      <div id="map"></div>
-    </div>
-
-    <div id="graph-container">
-      <h3>Graph</h3>
-      <div id="visualization-container"></div>
-    </div>
-
+  <div
+    class="button multi-upload"
+    [class.active]="uploadMode === 'multi'"
+    (click)="setUploadMode('multi')"
+  >
+    Multi Upload
   </div>
 </div>
+
+<div *ngIf="uploadMode === 'single'" class="flex-container">
+  <label for="file-upload" class="custom-file-input">Choose File</label>
+  <input
+    id="file-upload"
+    type="file"
+    (change)="onFileSelected($event)"
+    style="display: none;"
+  />
+</div>
+
+<div *ngIf="uploadMode === 'multi'" class="flex-container">
+  <label for="multi-file-upload" class="custom-file-input">Choose Files</label>
+  <input
+    id="multi-file-upload"
+    type="file"
+    multiple
+    (change)="onFilesSelected($event)"
+    style="display: none;"
+  />
+</div>
+
+
+<div *ngIf="uploadMode == 'single'">
+  <h3 *ngIf="this.data != null">Select Visualization</h3>
+  <select *ngIf="this.data != null" [(ngModel)]="currentVisualization" (change)="onVisualizationChange()">
+    <option value="cadence-distance">Basic Visualization</option>
+    <option value="strideLength-power">Stride Lenght vs Pace</option>
+    <option value="boxplot">Cadence and Stride Length Boxplot</option>
+  </select>
+
+  <div id="graph-container">
+    <h3>Graph</h3>
+    <div id="visualization-container"></div>
+  </div>
+
+  <div *ngIf="currentVisualization == 'cadence-distance'" id="map-container">
+    <h3>Map</h3>
+    <div id="map"></div>
+  </div>
+</div>
+
