@@ -60,11 +60,10 @@ export function cadenceStrideLengthBoxPlot(container: HTMLElement, data: ChartDa
     },
     marks: [
       Plot.ruleY([0]),
-      Plot.boxY(strideLengthData, {fx: "distance", y: "strideLength"})
+      Plot.boxY(strideLengthData, {fx: "distance", y: "strideLength", tip: true})
     ],
   });
 
-  // Clear existing container content and append charts
   container.innerHTML = "";
   const cadenceDiv = document.createElement("div");
   const strideLengthDiv = document.createElement("div");
