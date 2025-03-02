@@ -7,24 +7,35 @@ interface ChartData {
 }
 
 export function cadenceStrideLengthBoxPlot(container: HTMLElement, data: ChartData): void {
-  function filterByDeviation(data: number[], threshold: number): number[] {
-    const avg = data.reduce((sum, value) => sum + value, 0) / data.length;
-    return data.filter((value) => Math.abs(value - avg) <= threshold);
+  function computeIQR(values: number[]): { min: number; max: number } {
+    const sorted = values.filter(v => !isNaN(v)).sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.05)];
+    const q3 = sorted[Math.floor(sorted.length * 0.95)];
+    const iqr = q3 - q1;
+    return { min: q1 - 1.5 * iqr, max: q3 + 1.5 * iqr };
   }
 
-  const filteredCadence = filterByDeviation(data.Cadence, 25);
-  const filteredStrideLength = filterByDeviation(data.StrideLength, 300);
+  const iqrCadence = computeIQR(data.Cadence);
+  const iqrStride = computeIQR(data.StrideLength);
 
+  const filteredData = data.Distance.map((distance, index) => ({
+    distance: distance,
+    cadence: data.Cadence[index],
+    strideLength: data.StrideLength[index]
+  })).filter(d =>
+    d.cadence >= iqrCadence.min && d.cadence <= iqrCadence.max &&
+    d.strideLength >= iqrStride.min && d.strideLength <= iqrStride.max
+  );
 
-  const cadenceData = data.Distance.map((distance, index) => ({
-    distance,
-    cadence: filteredCadence[index] ?? null,
-  })).filter((d) => d.cadence !== null);
+  const cadenceData = filteredData.map(d => ({
+    distance: d.distance + 1,
+    cadence: d.cadence
+  }));
 
-  const strideLengthData = data.Distance.map((distance, index) => ({
-    distance,
-    strideLength: filteredStrideLength[index] ?? null,
-  })).filter((d) => d.strideLength !== null);
+  const strideLengthData = filteredData.map(d => ({
+    distance: d.distance + 1,
+    strideLength: d.strideLength
+  }));
 
   const cadenceChart = Plot.plot({
     marginLeft: 60,
@@ -34,10 +45,10 @@ export function cadenceStrideLengthBoxPlot(container: HTMLElement, data: ChartDa
       domain: [Math.min(...cadenceData.map(d => d.cadence)), Math.max(...cadenceData.map(d => d.cadence))]
     },
     fx: {
-      label: "Distance →",
+      label: "Distance (km) →",
       interval: 1,
       labelAnchor: "right",
-      tickFormat: (x) => x.toFixed(1)
+      tickFormat: (x) => x.toFixed(0)
     },
     marks: [
       Plot.ruleY([0]),
@@ -53,10 +64,10 @@ export function cadenceStrideLengthBoxPlot(container: HTMLElement, data: ChartDa
       domain: [Math.min(...strideLengthData.map(d => d.strideLength)), Math.max(...strideLengthData.map(d => d.strideLength))]
     },
     fx: {
-      label: "Distance →",
+      label: "Distance (km) →",
       interval: 1,
       labelAnchor: "right",
-      tickFormat: (x) => x.toFixed(1)
+      tickFormat: (x) => x.toFixed(0)
     },
     marks: [
       Plot.ruleY([0]),
@@ -68,7 +79,7 @@ export function cadenceStrideLengthBoxPlot(container: HTMLElement, data: ChartDa
   const cadenceDiv = document.createElement("div");
   const strideLengthDiv = document.createElement("div");
 
-  cadenceDiv.style.marginBottom = "20px"; // Add spacing between charts
+  cadenceDiv.style.marginBottom = "20px";
 
   cadenceDiv.appendChild(cadenceChart);
   strideLengthDiv.appendChild(strideLengthChart);

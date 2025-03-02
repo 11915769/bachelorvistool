@@ -82,17 +82,35 @@ export function cadenceVsStrideLength(
     const smoothedPaceData = movingAverage(paceLineData, "pace", smoothness);
     const smoothedHeartRateData = movingAverage(heartRateLineData, "heartRate", smoothness);
 
+    const maxYValue = getMaxValue(
+      {
+        cadence: smoothedCadenceData,
+        strideLength: smoothedStrideLengthData,
+        pace: smoothedPaceData,
+        power: smoothedPowerData,
+        heartRate: smoothedHeartRateData
+      },
+      {cadence, strideLength, pace, power, heartRate}
+    );
+
 
     const chart = Plot.plot({
-      height: 300,
-      x: {type: currentX === "time" ? "linear" : undefined, label: currentX === "time" ? "Time (minutes)" : "Distance"}, // Adjust label
-      y: {axis: "left", grid: true, nice: true, domain: [0, getMaxValue(data, {cadence, strideLength, pace, power, heartRate})]},
+      height: 350,
+      x: {type: currentX === "time" ? "linear" : undefined, label: currentX === "time" ? "Time (minutes)" : "Distance"},
+      y: {axis: true, grid: true, nice: true, domain: [0, maxYValue]},
+      marginLeft: 4,
+      marginRight: 4,
       marks: [
-        strideLength ? Plot.lineY(smoothedStrideLengthData, {x: currentX, y: "strideLength", stroke: "#a900ff"}) : null,
-        cadence ? Plot.lineY(smoothedCadenceData, {x: currentX, y: "cadence", stroke: "blue"}) : null,
-        power ? Plot.lineY(smoothedPowerData, {x: currentX, y: "power", stroke: "darkBlue"}) : null,
-        pace ? Plot.lineY(smoothedPaceData, {x: currentX, y: "pace", stroke: "green"}) : null,
-        heartRate ? Plot.lineY(smoothedHeartRateData, {x: currentX, y: "heartRate", stroke: "red"}) : null,
+        strideLength ? Plot.lineY(smoothedStrideLengthData, {x: currentX, y: "strideLength", stroke: "#007BFF"}) : null,
+        cadence ? Plot.lineY(smoothedCadenceData, {x: currentX, y: "cadence", stroke: "#FF6600"}) : null,
+        power ? Plot.lineY(smoothedPowerData, {x: currentX, y: "power", stroke: "#28A745"}) : null,
+        pace ? Plot.lineY(smoothedPaceData, {x: currentX, y: "pace", stroke: "#A900FF"}) : null,
+        heartRate ? Plot.lineY(smoothedHeartRateData, {
+          x: currentX, y: function (d) {
+            return d.heartRate * 1.5
+          },
+          stroke: "#DC3545"
+        }) : null,
         Plot.ruleX(strideLengthLineData, Plot.pointerX({x: currentX, py: "strideLength", stroke: "black"})),
         strideLength ? Plot.dot(smoothedStrideLengthData, Plot.pointerX({
           x: currentX,
@@ -102,32 +120,41 @@ export function cadenceVsStrideLength(
         cadence ? Plot.dot(smoothedCadenceData, Plot.pointerX({x: currentX, y: "cadence", stroke: "red"})) : null,
         power ? Plot.dot(smoothedPowerData, Plot.pointerX({x: currentX, y: "power", stroke: "red"})) : null,
         pace ? Plot.dot(smoothedPaceData, Plot.pointerX({x: currentX, y: "pace", stroke: "red"})) : null,
-        heartRate ? Plot.dot(smoothedHeartRateData, Plot.pointerX({x: currentX, y: "heartRate", stroke: "red"})) : null,
+        heartRate ? Plot.dot(smoothedHeartRateData, Plot.pointerX({
+          x: currentX, y: function (d: { heartRate: number; }) {
+            return d.heartRate * 1.5
+          }, stroke: "red"
+        })) : null,
         Plot.ruleX(
           smoothedStrideLengthData.filter(d => d.highlight),
-          {x: "distance", y: getMaxValue(data, {cadence, strideLength, pace, power, heartRate}), stroke: "black"}
+          {x: "distance", y: maxYValue, stroke: "black"}
         ),
         strideLength ? Plot.dot(
           smoothedStrideLengthData.filter(d => d.highlight),
-          {x: "distance", y: "strideLength", stroke: "black"}
+          {x: "distance", y: "strideLength", stroke: "red"}
         ) : null,
         cadence ? Plot.dot(
           smoothedCadenceData.filter(d => d.highlight),
-          {x: "distance", y: "cadence", stroke: "black"}
+          {x: "distance", y: "cadence", stroke: "red"}
         ) : null,
         power ? Plot.dot(
           smoothedPowerData.filter(d => d.highlight),
-          {x: "distance", y: "power", stroke: "black"}
+          {x: "distance", y: "power", stroke: "red"}
         ) : null,
         pace ? Plot.dot(
           smoothedPaceData.filter(d => d.highlight),
-          {x: "distance", y: "pace", stroke: "black"}
+          {x: "distance", y: "pace", stroke: "red"}
         ) : null,
         heartRate ? Plot.dot(
           smoothedHeartRateData.filter(d => d.highlight),
-          {x: "distance", y: "heartRate", stroke: "black"}
+          {
+            x: "distance", y: function (d) {
+              return d.heartRate * 1.5
+            }, stroke: "red"
+          }
         ) : null,
         Plot.text(smoothedStrideLengthData, Plot.pointerX({
+          name: "text01",
           px: currentX,
           py: "strideLength",
           dy: -17,
@@ -135,30 +162,34 @@ export function cadenceVsStrideLength(
           fontVariant: "tabular-nums",
           text: (d, i) => [
             `${currentX}: ${currentX === "time" ? d[currentX].toFixed(2) : d[currentX].toFixed(2)} km`,
-            strideLength ? `strideLength: ${(d.strideLength * 10).toFixed(0)} mm` : null,
-            cadence ? `cadence: ${smoothedCadenceData[i]?.cadence.toFixed(0)} SPM` : null,
-            power ? `power: ${smoothedPowerData[i]?.power.toFixed(0)} W` : null,
-            pace ? `pace: ${formatPace(smoothedPaceData[i]?.pace / 10)} min/km` : null,
-            heartRate ? `heartRate: ${smoothedHeartRateData[i]?.heartRate.toFixed(0)} BPM` : null,
+            strideLength ? `🟦strideLength: ${(d.strideLength * 10).toFixed(0)} mm` : null,
+            cadence ? `🟧cadence: ${smoothedCadenceData[i]?.cadence.toFixed(0)} SPM` : null,
+            power ? `🟩power: ${smoothedPowerData[i]?.power.toFixed(0)} W` : null,
+            pace ? `🟪pace: ${formatPace(smoothedPaceData[i]?.pace / 10)} min/km` : null,
+            heartRate ? `🟥heartRate: ${smoothedHeartRateData[i]?.heartRate.toFixed(0)} BPM` : null,
           ].join("   ")
         })),
         Plot.text(
-          strideLengthLineData.filter(d => d.highlight),
-          Plot.pointerX({
-            px: currentX,
-            py: "strideLength",
+          smoothedStrideLengthData,
+          {
+            x: (d) => d.highlight ? 0.1 : null,
+            y: (d) => d.highlight ? maxYValue : null,
             dy: -17,
             frameAnchor: "top-left",
             fontVariant: "tabular-nums",
-            text: (d, i) => [
-              `${currentX}: ${currentX === "time" ? d[currentX].toFixed(2) : d[currentX].toFixed(2)} km`,
-              strideLength ? `strideLength: ${(d.strideLength * 10)} mm` : null,
-              cadence ? `cadence: ${cadenceLineData[i]?.cadence} SPM` : null,
-              power ? `power: ${powerLineData[i]?.power} W` : null,
-              pace ? `pace: ${formatPace(paceLineData[i]?.pace / 10)} min/km` : null,
-              heartRate ? `heartRate: ${heartRateLineData[i]?.heartRate} BPM` : null,
-            ].join("   ")
-          })
+            text: (d) => {
+              if (!d.highlight) return null;
+              const i = smoothedStrideLengthData.findIndex(item => item.index === d.index);
+              return [
+                `${currentX}: ${currentX === "time" ? d[currentX].toFixed(2) : d[currentX].toFixed(2)} km`,
+                strideLength ? `🟦 strideLength: ${(d.strideLength * 10).toFixed(0)} mm` : null,
+                cadence ? `🟧 cadence: ${smoothedCadenceData[i]?.cadence.toFixed(0)} SPM` : null,
+                power ? `🟩 power: ${smoothedPowerData[i]?.power.toFixed(0)} W` : null,
+                pace ? `🟪 pace: ${formatPace(smoothedPaceData[i]?.pace / 10)} min/km` : null,
+                heartRate ? `🟥 heartRate: ${smoothedHeartRateData[i]?.heartRate.toFixed(0)} BPM` : null,
+              ].filter(Boolean).join("   ");
+            }
+          }
         )
 
       ]
@@ -169,6 +200,12 @@ export function cadenceVsStrideLength(
     chartContainer.id = "chart-container";
     container.innerHTML = "";
     chartContainer.appendChild(chart);
+    chartContainer.style.display = "flex";
+    chartContainer.style.justifyContent = "center";
+    chartContainer.style.backgroundColor = "#3b4c5a";
+    chartContainer.style.borderRadius = "15px";
+    chartContainer.style.padding = "25px";
+    chartContainer.style.color = "#ffffff";
     container.appendChild(chartContainer);
 
     setTimeout(() => {
@@ -203,11 +240,11 @@ export function cadenceVsStrideLength(
 }
 
 function formatPace(pace: number): string {
-  if (pace === null || pace === undefined) return ""; // Handle empty cases
+  if (pace === null || pace === undefined) return "";
 
-  const minutes = Math.floor(pace); // Extract whole minutes
-  const decimalSeconds = pace - minutes; // Extract the decimal part
-  const seconds = Math.round(decimalSeconds * 60); // Convert decimal to seconds
+  const minutes = Math.floor(pace);
+  const decimalSeconds = pace - minutes;
+  const seconds = Math.round(decimalSeconds * 60);
 
   if (seconds >= 60) {
     return `${minutes + 1}:00`;
@@ -216,7 +253,13 @@ function formatPace(pace: number): string {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
-function getMaxValue(data: ChartData, options: {
+function getMaxValue(smoothedData: {
+  cadence?: any[],
+  strideLength?: any[],
+  pace?: any[],
+  power?: any[],
+  heartRate?: any[]
+}, options: {
   cadence?: boolean,
   strideLength?: boolean,
   pace?: boolean,
@@ -225,23 +268,24 @@ function getMaxValue(data: ChartData, options: {
 }): number | null {
   let maxValue: number | null = null;
 
-  function extractMax(arr: number[] | undefined, scale: number = 1): number | null {
-    return arr && arr.length ? Math.max(...arr) / scale : null;
+  function extractMax(arr: any[] | undefined, field: string, scale: number = 1): number | null {
+    return arr && arr.length ? Math.max(...arr.map(d => d[field] ?? 0)) / scale : null;
   }
 
   let values: number[] = [];
 
-  if (options.cadence) values.push(extractMax(data.Cadence) ?? 0);
-  if (options.strideLength) values.push(extractMax(data.StrideLength, 10) ?? 0);
-  if (options.pace) values.push(extractMax(data.Pace, 0.1) ?? 0);
-  if (options.power) values.push(extractMax(data.Power) ?? 0);
-  if (options.heartRate) values.push(extractMax(data.HeartRate) ?? 0);
+  if (options.cadence) values.push(extractMax(smoothedData.cadence, "cadence") ?? 0);
+  if (options.strideLength) values.push(extractMax(smoothedData.strideLength, "strideLength") ?? 0);
+  if (options.pace) values.push(extractMax(smoothedData.pace, "pace") ?? 0);
+  if (options.power) values.push(extractMax(smoothedData.power, "power") ?? 0);
+  if (options.heartRate) values.push(extractMax(smoothedData.heartRate, "heartRate", 0.75) ?? 0);
 
   if (values.length) {
     maxValue = Math.max(...values);
   }
   return maxValue !== null ? roundToNext50(maxValue) : maxValue;
 }
+
 
 function roundToNext50(value: number): number {
   return Math.ceil(value / 50) * 50 + (value % 50 === 0 ? 50 : 0);

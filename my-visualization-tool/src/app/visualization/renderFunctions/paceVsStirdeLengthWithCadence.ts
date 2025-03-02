@@ -16,7 +16,7 @@ export function paceVsStrideLengthWithCadence(container: HTMLElement, data: Scat
   const validKeys = ["Pace", "StrideLength", "Cadence", "Power", "Elevation", "HeartRate", "Distance"] as const;
   const availableKeys = validKeys.filter(key => key in data);
 
-  const xSelect = createDropdown("X-Axis", availableKeys, "Pace", renderPlot);
+  const xSelect = createDropdown("X-Axis", availableKeys, "Distance", renderPlot);
   const ySelect = createDropdown("Y-Axis", availableKeys, "StrideLength", renderPlot);
   const fillSelect = createDropdown("Color", availableKeys, "Cadence", renderPlot);
 
@@ -27,6 +27,12 @@ export function paceVsStrideLengthWithCadence(container: HTMLElement, data: Scat
   controlsContainer.style.display = "flex";
   controlsContainer.style.gap = "10px";
   controlsContainer.style.alignItems = "center";
+  controlsContainer.style.justifyContent = "center";
+  controlsContainer.style.backgroundColor = "#3b4c5a";
+  controlsContainer.style.borderTopLeftRadius = "15px";
+  controlsContainer.style.borderTopRightRadius = "15px";
+  controlsContainer.style.padding = "20px";
+  controlsContainer.style.marginBottom = "0";
 
   controlsContainer.appendChild(xSelect);
   controlsContainer.appendChild(ySelect);
@@ -38,71 +44,107 @@ export function paceVsStrideLengthWithCadence(container: HTMLElement, data: Scat
   plotContainer.style.marginTop = "15px";
   container.appendChild(plotContainer);
 
-  insertFilteredDataset(data).then(() => {
-    console.log("✅ SQL Data Inserted");
-    renderPlot();
-  });
+  renderPlot();
 
   function renderPlot() {
+
+    plotContainer.innerHTML = "";
+
     const xKey = xSelect.value;
     const yKey = ySelect.value;
     const fillKey = fillSelect.value;
-
-    console.log(`🎨 Rendering: X=${xKey}, Y=${yKey}, Fill=${fillKey}`);
-
     plotContainer.innerHTML = "";
 
     const $brush = vg.Selection.intersect();
 
     const source = vg.from("scatterData", {cache: false});
 
-    console.log(fillKey);
-
     const plots = vg.vconcat(
-      vg.colorLegend({for: "fill"}),
       vg.plot(
         vg.dot(source, {
           x: xKey,
           y: yKey,
           fill: fillKey,
           r: 3,
-          tip: true,
+          tip: {
+            format: {
+              x: xKey === "Pace" ? (d: number) => formatPace(d) : (d: number) => d.toFixed(0),
+              y: yKey === "Pace" ? (d: number) => formatPace(d) : (d: number) => d.toFixed(0),
+              fill: fillKey === "Pace" ? (d: number) => formatPace(d) : (d: number) => d.toFixed(0),
+            },
+            fill: "#465a6a",
+            stroke: "#ffffff"
+          }
         }),
         vg.name("scatter"),
         vg.intervalX({as: $brush, brush: {fill: "none", stroke: "#888"}}),
         vg.xLabel(xKey),
         vg.yLabel(yKey),
-        vg.width(600),
         vg.height(300)
       ),
+      vg.colorLegend({for: "scatter", label: fillKey, style: "margin-left: 100%",}),
       vg.plot(
         vg.dot(vg.from("scatterData", {filterBy: $brush}), {
           x: xKey,
           y: yKey,
           fill: fillKey,
           r: 3,
-          tip: true,
+          tip: {
+            format: {
+              x: xKey === "Pace" ? (d: number) => formatPace(d) : (d: number) => d.toFixed(0),
+              y: yKey === "Pace" ? (d: number) => formatPace(d) : (d: number) => d.toFixed(0),
+              fill: fillKey === "Pace" ? (d: number) => formatPace(d) : (d: number) => d.toFixed(0),
+            },
+            fill: "#465a6a",
+            stroke: "#ffffff"
+          }
+
         }),
         vg.name("scatter_filtered"),
         vg.xLabel(xKey),
         vg.yLabel(yKey),
-        vg.width(600),
-        vg.height(300)
+        vg.gridX,
+        vg.gridY,
+        vg.height(300),
       )
     );
 
+
+    plotContainer.style.display = "flex";
+    plotContainer.style.display = "flex-column";
+    plotContainer.style.alignItems = "center";
+    plotContainer.style.backgroundColor = "#3b4c5a";
+    plotContainer.style.borderBottomRightRadius = "15px";
+    plotContainer.style.borderBottomLeftRadius = "15px";
+    plotContainer.style.padding = "20px";
+    plotContainer.style.color = "#ffffff";
+    plotContainer.style.marginTop = "0";
     plotContainer.appendChild(plots);
   }
 }
 
 
 export async function insertFilteredDataset(data: ScatterData): Promise<void> {
-  console.log("🟢 Inserting filtered dataset into SQL...");
+  function computeIQR(values: number[]): { min: number; max: number } {
+    const sorted = values.filter(v => !isNaN(v)).sort((a, b) => a - b);
+    const q1 = sorted[Math.floor(sorted.length * 0.05)];
+    const q3 = sorted[Math.floor(sorted.length * 0.95)];
+    const iqr = q3 - q1;
+    return {min: q1 - 1.5 * iqr, max: q3 + 1.5 * iqr};
+  }
+
+  const iqrRanges = {
+    Pace: computeIQR(data.Pace),
+    StrideLength: computeIQR(data.StrideLength),
+    Cadence: computeIQR(data.Cadence),
+    Power: computeIQR(data.Power),
+    Elevation: computeIQR(data.Elevation),
+    HeartRate: computeIQR(data.HeartRate),
+    Distance: computeIQR(data.Distance),
+  };
 
   const validCadenceValues = data.Cadence.filter(c => !isNaN(c));
-  const avgCadence =
-    validCadenceValues.reduce((sum, val) => sum + val, 0) / validCadenceValues.length;
-
+  const avgCadence = validCadenceValues.reduce((sum, val) => sum + val, 0) / validCadenceValues.length;
   const minCadence = avgCadence * 0.8;
   const maxCadence = avgCadence * 1.2;
 
@@ -116,7 +158,7 @@ export async function insertFilteredDataset(data: ScatterData): Promise<void> {
       Power DOUBLE,
       Elevation DOUBLE,
       HeartRate DOUBLE,
-      Distance DOUBLE,
+      Distance DOUBLE
     );
   `;
 
@@ -132,21 +174,27 @@ export async function insertFilteredDataset(data: ScatterData): Promise<void> {
       HeartRate: data.HeartRate[i],
       Distance: data.Distance[i],
     }))
-    .filter(d => d.Cadence >= minCadence && d.Cadence <= maxCadence)
+    .filter(d =>
+      d.Cadence >= minCadence && d.Cadence <= maxCadence &&
+      d.Pace >= iqrRanges.Pace.min && d.Pace <= iqrRanges.Pace.max &&
+      d.StrideLength >= iqrRanges.StrideLength.min && d.StrideLength <= iqrRanges.StrideLength.max &&
+      d.Cadence >= iqrRanges.Cadence.min && d.Cadence <= iqrRanges.Cadence.max &&
+      d.Power >= iqrRanges.Power.min && d.Power <= iqrRanges.Power.max &&
+      d.Elevation >= iqrRanges.Elevation.min && d.Elevation <= iqrRanges.Elevation.max &&
+      d.HeartRate >= iqrRanges.HeartRate.min && d.HeartRate <= iqrRanges.HeartRate.max &&
+      d.Distance >= iqrRanges.Distance.min && d.Distance <= iqrRanges.Distance.max
+    )
     .map(d => `(${d.Pace}, ${d.StrideLength}, ${d.Cadence}, ${d.Power}, ${d.Elevation}, ${d.HeartRate}, ${d.Distance})`)
     .join(",");
 
   if (!filteredValues) {
-    console.warn("No valid data left after filtering Cadence.");
+    console.warn("No valid data left after filtering outliers.");
     return;
   }
 
   const insertQuery = `INSERT INTO scatterData
                        VALUES ${filteredValues};`;
-
   await vg.coordinator().exec(insertQuery);
-
-  console.log("Filtered Data Inserted Successfully");
 }
 
 
@@ -177,5 +225,19 @@ function createDropdown(labelText: string, options: string[], defaultValue: stri
   wrapper.appendChild(label);
   wrapper.appendChild(select);
   return wrapper.children[1] as HTMLSelectElement;
+}
+
+function formatPace(pace: number): string {
+  if (pace === null || pace === undefined) return "";
+
+  let minutes = Math.floor(pace);
+  let seconds = Math.round((pace - minutes) * 60);
+
+  if (seconds === 60) {
+    minutes += 1;
+    seconds = 0;
+  }
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 

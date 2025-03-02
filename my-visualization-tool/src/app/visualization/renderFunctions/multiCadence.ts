@@ -2,6 +2,7 @@ import * as Plot from "@observablehq/plot";
 import * as d3 from "d3";
 import * as vg from "@uwdata/vgplot";
 
+
 vg.coordinator().databaseConnector(vg.wasmConnector());
 
 
@@ -26,7 +27,8 @@ export function multiCadence(el: HTMLElement, runs: {
     HeartRate: number[],
     Power: number[],
     Distance: number[],
-    Elevation: number[]
+    Elevation: number[],
+    Timestamp: string[];
   };
 }[]) {
   if (!el) {
@@ -34,22 +36,27 @@ export function multiCadence(el: HTMLElement, runs: {
     return;
   }
 
-  if (!runs || !Array.isArray(runs)) {
-    console.error("Error: Provided runs data is not an array.");
+  if (!runs || runs.length === 0) {
+    console.error("Error: No run data provided.");
     return;
   }
 
-  // Compute the global average cadence
+  const validKeys = ["Pace", "StrideLength", "Cadence", "Power", "Elevation", "HeartRate", "Distance"] as const;
+  const availableKeys = validKeys.filter(key => key in runs[0].data);
+
+  const ySelect = createDropdown("Y-Axis", availableKeys, "Cadence", () => {
+    renderPlot();
+  });
+
+
   const allCadenceValues = runs.flatMap(run => run.data.Cadence || []);
   const validCadenceValues = allCadenceValues.filter(value => typeof value === "number" && !isNaN(value));
   const avgCadence = validCadenceValues.reduce((sum, val) => sum + val, 0) / validCadenceValues.length;
 
-  // Compute the global average pace
   const allPaceValues = runs.flatMap(run => run.data.Pace || []);
   const validPaceValues = allPaceValues.filter(value => typeof value === "number" && !isNaN(value));
   const avgPace = validPaceValues.reduce((sum, val) => sum + val, 0) / validPaceValues.length;
 
-  // Process and filter the data
   const plotData = runs.flatMap(run => {
     if (!run.data.Cadence || !run.data.Distance || !run.data.Elevation || !run.data.Pace) return [];
 
@@ -57,21 +64,27 @@ export function multiCadence(el: HTMLElement, runs: {
       cadence,
       distance: run.data.Distance[index],
       elevation: run.data.Elevation[index],
+      heartRate: run.data.HeartRate[index],
+      power: run.data.Power[index],
       pace: run.data.Pace[index],
+      strideLength: run.data.StrideLength[index],
     })).filter(entry =>
       entry.cadence >= avgCadence - 20 && entry.cadence <= avgCadence + 20 &&
-      entry.pace >= avgPace - 10 && entry.pace <= avgPace + 10 // ✅ Pace filter applied
+      entry.pace >= avgPace - 10 && entry.pace <= avgPace + 10
     );
 
     const smoothedCadence = movingAverage(filteredData.map(d => d.cadence), 20);
-    const smoothedPace = movingAverage(filteredData.map(d => d.pace), 20); // ✅ Smooth pace
+    const smoothedPace = movingAverage(filteredData.map(d => d.pace), 20);
 
     return smoothedCadence.map((cadence, index) => ({
       run: run.filename,
       distance: filteredData[index]?.distance || 0,
-      cadence,
+      cadence: cadence ? cadence : 0,
       elevation: filteredData[index]?.elevation || 0,
       pace: smoothedPace[index] || 0,
+      heartRate: filteredData[index]?.heartRate || 0,
+      power: filteredData[index]?.power || 0,
+      strideLength: filteredData[index]?.strideLength || 0,
     }));
   });
 
@@ -80,15 +93,20 @@ export function multiCadence(el: HTMLElement, runs: {
     return;
   }
 
-  // SQL-like data structure
   const values = plotData
-    .map(row => `(${row.distance}, ${row.cadence}, ${row.elevation}, ${row.pace}, '${row.run.replace(/'/g, "''")}')`)
+    .map(row => `(${row.distance}, ${row.power}, ${row.heartRate}, ${row.strideLength}, ${row.cadence}, ${row.elevation}, ${row.pace}, '${row.run.replace(/'/g, "''")}')`)
     .join(", ");
 
   const createTableQuery = `
     CREATE TABLE IF NOT EXISTS filteredData
     (
       distance
+      DOUBLE,
+      power
+      DOUBLE,
+      heartRate
+      DOUBLE,
+      strideLength
       DOUBLE,
       cadence
       DOUBLE,
@@ -114,7 +132,6 @@ export function multiCadence(el: HTMLElement, runs: {
     const globalMinMax: { [key: string]: { min: number, max: number } } = {};
 
     metrics.forEach(metric => {
-      // Filter out the highest and lowest 5% of values for this metric
       const allValues = runs.flatMap(run => run.data[metric]);
       const sortedValues = [...allValues].sort((a, b) => a - b);
       const filteredValues = sortedValues.slice(
@@ -130,7 +147,6 @@ export function multiCadence(el: HTMLElement, runs: {
     return globalMinMax;
   }
 
-  // Normalize values based on the global min and max for each metric
   function normalizeGlobal(value: number, metric: string, globalMinMax: {
     [key: string]: { min: number, max: number }
   }) {
@@ -138,7 +154,6 @@ export function multiCadence(el: HTMLElement, runs: {
     return (value - min) / (max - min);
   }
 
-  // Calculate the average value after filtering the highest and lowest 5%
   function calculateFilteredAverage(values: number[]) {
     const sortedValues = [...values].sort((a, b) => a - b);
     const filteredValues = sortedValues.slice(
@@ -149,22 +164,51 @@ export function multiCadence(el: HTMLElement, runs: {
     return sum / filteredValues.length;
   }
 
-  const metrics = ["Cadence", "Pace", "StrideLength", "HeartRate", "Power"];
+  const metrics = ["Cadence", "Pace", "StrideLength", "HeartRate", "Power", "Elevation", "Distance"];
 
-  // Find the global min and max for each metric after filtering
+  const metricUnits: Record<string, string> = {
+    Cadence: "(SPM)",
+    Pace: "(min/km)",
+    StrideLength: "(mm)",
+    HeartRate: "(BPM)",
+    Power: "(W)",
+    Elevation: "gained(m)",
+    Distance: "(km)"
+  };
+
+
   const globalMinMax = findGlobalMinMax(metrics, runs);
 
-  // Create the radar data with averages for each metric after filtering
-  const radarData = runs.map(run => ({
-    name: run.filename,
-    values: {
-      Cadence: normalizeGlobal(calculateFilteredAverage(run.data.Cadence), "Cadence", globalMinMax),
-      Pace: normalizeGlobal(calculateFilteredAverage(run.data.Pace), "Pace", globalMinMax),
-      StrideLength: normalizeGlobal(calculateFilteredAverage(run.data.StrideLength), "StrideLength", globalMinMax),
-      HeartRate: normalizeGlobal(calculateFilteredAverage(run.data.HeartRate), "HeartRate", globalMinMax),
-      Power: normalizeGlobal(calculateFilteredAverage(run.data.Power), "Power", globalMinMax),
-    }
-  }));
+  const radarData = runs.map(run => {
+    const minElevation = Math.min(...run.data.Elevation);
+    const adjustedElevation = run.data.Elevation.map(e => e - minElevation);
+
+    const maxAdjustedElevation = Math.max(...adjustedElevation);
+
+    return {
+      name: "Run from " + new Date(Math.min(...run.data.Timestamp.map(t => new Date(t).getTime()))).toLocaleDateString("de-DE"),
+      rawAverages: {
+        Cadence: calculateFilteredAverage(run.data.Cadence),
+        Pace: calculateFilteredAverage(run.data.Pace),
+        StrideLength: calculateFilteredAverage(run.data.StrideLength),
+        HeartRate: calculateFilteredAverage(run.data.HeartRate),
+        Power: calculateFilteredAverage(run.data.Power),
+        Elevation: calculateFilteredAverage(adjustedElevation),
+        Distance: calculateFilteredAverage(run.data.Distance),
+      },
+      values: {
+        Cadence: normalizeGlobal(calculateFilteredAverage(run.data.Cadence), "Cadence", globalMinMax),
+        Pace: normalizeGlobal(calculateFilteredAverage(run.data.Pace), "Pace", globalMinMax),
+        StrideLength: normalizeGlobal(calculateFilteredAverage(run.data.StrideLength), "StrideLength", globalMinMax),
+        HeartRate: normalizeGlobal(calculateFilteredAverage(run.data.HeartRate), "HeartRate", globalMinMax),
+        Power: normalizeGlobal(calculateFilteredAverage(run.data.Power), "Power", globalMinMax),
+        Elevation: maxAdjustedElevation > 0
+          ? calculateFilteredAverage(adjustedElevation) / maxAdjustedElevation
+          : 0,
+        Distance: normalizeGlobal(calculateFilteredAverage(run.data.Distance), "Distance", globalMinMax),
+      }
+    };
+  });
 
 
   const points = radarData.flatMap(run =>
@@ -175,35 +219,41 @@ export function multiCadence(el: HTMLElement, runs: {
     }))
   );
 
-  console.log(points);
-
-  // Angle scale for the radar chart (to position metrics)
   const angleScale = d3.scaleOrdinal<string, number>()
     .domain(metrics)
     .range(metrics.map((_, i) => (i / metrics.length) * 2 * Math.PI));
 
-  // Radius scale for the values
-  const radiusScale = d3.scaleLinear().domain([0, 1]).range([0, 90]); // Adjusted for max radius (0-1)
+  const radiusScale = (key: string) =>
+    d3.scaleLinear()
+      .domain(key === "Pace" || key === "HeartRate" ? [1, 0] : [0, 1])
+      .range([0, 90]);
 
-  // Circles for the grid
+
   const gridRadii = [0.2, 0.4, 0.6, 0.8, 1.0];
-  const gridCircles = gridRadii.flatMap(r =>
-    d3.range(0, 2 * Math.PI, Math.PI / 1000).map(angle => ({
-      x: Math.cos(angle) * radiusScale(r),
-      y: Math.sin(angle) * radiusScale(r),
-      r: r
-    }))
+  const gridCircles = metrics.flatMap(key =>
+    gridRadii.flatMap(r =>
+      d3.range(0, 2 * Math.PI, Math.PI / 1000).map(angle => ({
+        key,
+        x: Math.cos(angle) * radiusScale(key)(r),
+        y: Math.sin(angle) * radiusScale(key)(r),
+        r: r
+      }))
+    )
   );
+
 
   const radarChart = Plot.plot({
     width: 500,
     height: 500,
     margin: 50,
-    color: {legend: true},
+    color: {
+      legend: true,
+      label: "Run Date",
+      domain: radarData.map(d => d.name).filter(name => name !== "No Date"),
+    },
     x: {axis: null},
     y: {axis: null},
     marks: [
-      // Grid circles (background)
       Plot.line(gridCircles, {
         x: "x",
         y: "y",
@@ -214,33 +264,28 @@ export function multiCadence(el: HTMLElement, runs: {
         facet: null
       }),
 
-      // Connecting lines from the center (to each axis)
       Plot.link(metrics, {
         x1: (d) => Math.cos(angleScale(d)) * 90,
         y1: (d) => Math.sin(angleScale(d)) * 90,
         x2: 0,
         y2: 0,
         stroke: "gray",
-        strokeOpacity: 0.6,
+        strokeOpacity: 0.4,
         strokeWidth: 1
       }),
 
-      // Metric labels
       Plot.text(metrics, {
-        x: (d) => Math.cos(angleScale(d)) * 110,
-        y: (d) => Math.sin(angleScale(d)) * 110,
-        text: (d) => d,
-        fontSize: 12,
+        x: (d) => Math.cos(angleScale(d)) * 115,
+        y: (d) => Math.sin(angleScale(d)) * 115,
+        text: (d) => `${d} ${metricUnits[d] || ""}`,
         textAnchor: "middle",
-        fill: "black",
-        stroke: "white",
-        strokeWidth: 0.5
+        fontSize: 12,
       }),
 
-      // Radar chart areas with interactive opacity
+
       Plot.area(points, {
-        x1: ({key, value}) => Math.cos(angleScale(key)) * radiusScale(value),
-        y1: ({key, value}) => Math.sin(angleScale(key)) * radiusScale(value),
+        x1: ({key, value}) => Math.cos(angleScale(key)) * radiusScale(key)(value),
+        y1: ({key, value}) => Math.sin(angleScale(key)) * radiusScale(key)(value),
         x2: 0,
         y2: 0,
         fill: "name",
@@ -251,12 +296,11 @@ export function multiCadence(el: HTMLElement, runs: {
         facet: null,
       }),
 
-      // Points (dots) for each metric
       Plot.dot(points, {
-        x: ({key, value}) => Math.cos(angleScale(key)) * radiusScale(value),
-        y: ({key, value}) => Math.sin(angleScale(key)) * radiusScale(value),
+        x: ({key, value}) => Math.cos(angleScale(key)) * radiusScale(key)(value),
+        y: ({key, value}) => Math.sin(angleScale(key)) * radiusScale(key)(value),
         fill: "name",
-        stroke: "black",
+        stroke: "white",
         fillOpacity: 0.5,
         r: 5
       }),
@@ -264,99 +308,144 @@ export function multiCadence(el: HTMLElement, runs: {
       Plot.text(
         points,
         Plot.pointer({
-          x: ({key, value}: { key: string, value: number }) => Math.cos(angleScale(key)) * radiusScale(value),
-          y: ({key, value}: { key: string, value: number }) => Math.sin(angleScale(key)) * radiusScale(value),
-          text: ({value}) => `${(value * 100).toFixed()}%`,
+          x: ({key, value}: { key: string, value: number }) =>
+            Math.cos(angleScale(key)) * radiusScale(key)(value),
+          y: ({key, value}: { key: string, value: number }) =>
+            Math.sin(angleScale(key)) * radiusScale(key)(value),
+          text: ({key, name}: { key: string; name: string }) => {
+            const runData = radarData.find((r) => r.name === name);
+            if (!runData || !(key in runData.rawAverages)) return "";
+
+            let displayValue = runData.rawAverages[key as keyof typeof runData.rawAverages];
+
+            if (key === "Distance") {
+              const run = runs.find((r) => `Run from ${new Date(Math.min(...r.data.Timestamp.map(t => new Date(t).getTime()))).toLocaleDateString("de-DE")}` === name);
+              if (run) {
+                displayValue = Math.max(...run.data.Distance);
+              }
+              return displayValue.toFixed(1);
+            }
+
+            if (key === "Elevation") {
+              const run = runs.find((r) => `Run from ${new Date(Math.min(...r.data.Timestamp.map(t => new Date(t).getTime()))).toLocaleDateString("de-DE")}` === name);
+              if (run) {
+                displayValue = run.data.Elevation.reduce((sum, curr, i, arr) => {
+                  if (i > 0 && curr > arr[i - 1]) {
+                    sum += curr - arr[i - 1];
+                  }
+                  return sum;
+                }, 0);
+              }
+              return displayValue.toFixed(0);
+            }
+
+            if (key === "Pace") return formatPace(displayValue);
+            return displayValue.toFixed(0);
+          },
           textAnchor: "middle",
-          fill: "black",
-          stroke: "white",
-          strokeWidth: 0.5,
-          maxRadius: 10,
           dx: 18,
         })
       ),
 
+
     ]
   });
+
+  function renderPlot() {
+    let plotContainer = document.getElementById("plot-container");
+
+    if (!plotContainer) {
+      plotContainer = document.createElement("div");
+      plotContainer.id = "plot-container";
+      el.appendChild(plotContainer);
+    }
+
+
+    plotContainer.innerHTML = "";
+
+    const plot = vg.plot(
+      vg.lineY(
+        vg.from("filteredData"),
+        {
+          x: "distance", y: ySelect.value.toLowerCase(), z: "run", interpolate: "monotone", stroke: "run", tip: {
+            format: {
+              x: (d: number) => d.toFixed(2),
+              y: ySelect.value === "Pace" ? (d: number) => formatPace(d) : (d: number) => d.toFixed(0),
+              z: null,
+              stroke: null
+            },
+            fill: "#465a6a",
+            stroke: "#ffffff",
+          }
+        }
+      ),
+      vg.nearestX({channels: ["z"], as: $curr}),
+      vg.highlight({by: $curr}),
+    );
+
+    plotContainer.appendChild(plot);
+  }
+
 
   coordinator.exec(createTableQuery).then(() => {
     return coordinator.exec(insertDataQuery);
   }).then(() => {
-    el.replaceChildren(radarChart,
-      vg.vconcat(
-        vg.plot(
-          vg.lineY(
-            vg.from("filteredData"),
-            {x: "distance", y: "cadence", z: "run", stroke: "run"}
-          ),
-          vg.nearestX({channels: ["z"], as: $curr}),
-          vg.highlight({by: $curr}),
-          vg.dot(
-            vg.from("filteredData"),
-            {
-              x: "distance",
-              y: "cadence",
-              z: "run",
-              r: 4,
-              fill: "currentColor",
-              select: "nearestX",
-            }
-          ),
-          vg.text(
-            vg.from("filteredData"),
-            {
-              x: "distance",
-              y: "cadence",
-              text: vg.sql`'Distance: ' || ROUND(distance, 2) || ', Cadence: ' || ROUND(cadence, 2)`,
-              fill: "currentColor",
-              dy: -8,
-              select: "nearestX"
-            }
-          ),
-          vg.width(800),
-          vg.height(400),
-          vg.yGrid(true),
-          vg.style("overflow: visible;"),
-          vg.panZoom()
-        ),
-        vg.plot(
-          vg.lineY(
-            vg.from("filteredData"),
-            {x: "distance", y: "pace", z: "run", stroke: "run"}
-          ),
-          vg.nearestX({channels: ["z"], as: $curr}),
-          vg.highlight({by: $curr}),
-          vg.dot(
-            vg.from("filteredData"),
-            {
-              x: "distance",
-              y: "pace",
-              z: "run",
-              r: 4,
-              fill: "currentColor",
-              select: "nearestX"
-            }
-          ),
-          vg.text(
-            vg.from("filteredData"),
-            {
-              x: "distance",
-              y: "pace",
-              text: vg.sql`'Distance: ' || ROUND(distance, 2) || ', Pace: ' || ROUND(pace, 2)`,
-              fill: "currentColor",
-              dy: -8,
-              select: "nearestX"
-            }
-          ),
-          vg.width(800),
-          vg.height(400),
-          vg.yGrid(true),
-          vg.style("overflow: visible;"),
-          vg.panZoom()
-        )
-      )
-    );
+    el.appendChild(radarChart);
+    el.appendChild(ySelect);
+    renderPlot()
   }).catch((error: any) => {
     console.error("Error executing SQL:", error);
   })
+  el.style.backgroundColor = "#3b4c5a";
+  el.style.color = "white";
+  el.style.borderRadius = "15px";
+  el.style.display = "flex";
+  el.style.flexDirection = "column";
+  el.style.alignItems = "center";
+  el.style.padding = "20px";
 }
+
+function formatPace(pace: number): string {
+  if (pace === null || pace === undefined) return "";
+
+  let minutes = Math.floor(pace);
+  let seconds = Math.round((pace - minutes) * 60);
+
+  if (seconds === 60) {
+    minutes += 1;
+    seconds = 0;
+  }
+
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+}
+
+function createDropdown(labelText: string, options: string[], defaultValue: string, onChange?: () => void): HTMLSelectElement {
+  const wrapper = document.createElement("div");
+  wrapper.style.display = "flex";
+  wrapper.style.alignItems = "center";
+
+  const label = document.createElement("label");
+  label.textContent = `${labelText}: `;
+  label.style.marginRight = "5px";
+
+  const select = document.createElement("select");
+  options.forEach(option => {
+    const optionElement = document.createElement("option");
+    optionElement.value = option;
+    optionElement.textContent = option;
+    if (option === defaultValue) {
+      optionElement.selected = true;
+    }
+    select.appendChild(optionElement);
+  });
+
+  if (onChange) {
+    select.addEventListener("change", onChange);
+  }
+
+  wrapper.appendChild(label);
+  wrapper.appendChild(select);
+  return wrapper.children[1] as HTMLSelectElement;
+}
+
+

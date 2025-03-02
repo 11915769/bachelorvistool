@@ -1,0 +1,30 @@
+.navbar-nav .nav-link {
+  cursor: pointer;
+}
+
+.custom-range::-webkit-slider-thumb {
+  background: #4d6275;
+}
+
+.custom-range::-moz-range-thumb {
+  background: #4d6275;
+}
+
+.custom-range::-ms-thumb {
+  background: #4d6275;
+}
+
+/* Default checkbox styling */
+.form-check-input {
+  cursor: pointer;
+  border: 2px solid #ffffff;
+}
+
+.form-check-input:checked {
+  background-color: #4d6275;
+  border-color: #4d6275;
+}
+
+#map {
+  background: transparent !important
+}
